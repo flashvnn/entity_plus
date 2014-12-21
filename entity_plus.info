@@ -1,0 +1,8 @@
+name = Entity Order
+description = Add order property for Drupal enitty
+package = Entity
+core = 7.x
+version = 7.x-1.x
+
+;files[] =
+dependencies[] = entity

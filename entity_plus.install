@@ -1,0 +1,101 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Entity Order module.
+ */
+
+require_once "entity_plus.entity.inc";
+
+function entity_plus_schema_field_definition() {
+  return array(
+    "eorder" => array(
+      'type'        => 'int',
+      'unsigned'    => TRUE,
+      'not null'    => FALSE,
+      'default'     => NULL,
+      'description' => 'The Entity Plus Order Identifier.',
+    ),
+    "edata" => array(
+      'type'        => 'blob',
+      'not null'    => FALSE,
+      'size'        => 'big',
+      'serialize'   => TRUE,
+      'default'     => NULL,
+      'initial'     => NULL,
+      'description' => 'A serialized array of name value pairs thatare related to the node.',
+    )
+  );
+}
+
+
+
+/**
+ * Implements hook_schema_alter().
+ */
+function entity_plus_schema_alter(&$schema = array()) {
+  $fields = entity_plus_schema_field_definition();
+  foreach ($fields as $field_name => $field) {
+    foreach (entity_plus_get_core_entity_info() as $entity_type => $info) {
+      $schema[$info['base table']]['fields'][$field_name] = $field;
+      if (!empty($info['revision table'])) {
+        $schema[$info['revision table']]['fields'][$field_name] = $field;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_install().
+ */
+function entity_plus_install() {
+  _entity_plus_install_data_extras_fields();
+}
+
+/**
+ * Install the 'data_extras' into Drupal core entity tables where needed.
+ */
+function _entity_plus_install_data_extras_fields() {
+  $fields = entity_plus_schema_field_definition();
+  foreach ($fields as $field_name => $field) {
+    foreach (entity_plus_get_core_entity_info() as $entity_type => $info) {
+      if (!db_field_exists($info['base table'], $field_name)) {
+        db_add_field($info['base table'], $field_name, $field);
+      }
+      if (!empty($info['revision table'])) {
+        if (!db_field_exists($info['revision table'], $field_name)) {
+          db_add_field($info['revision table'], $field_name, $field);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function entity_plus_uninstall() {
+  $fields = entity_plus_schema_field_definition();
+  foreach ($fields as $field_name => $field) {
+    //dpm($field, $field_name);
+    foreach (entity_plus_get_core_entity_info() as $entity_type => $info) {
+      if (db_field_exists($info['base table'], $field_name)) {
+        db_drop_field($info['base table'], $field_name);
+      }
+      if (!empty($info['revision table'])) {
+        if (db_field_exists($info['revision table'], $field_name)) {
+          db_drop_field($info['revision table'], $field_name);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_modules_installed().
+ */
+function entity_plus_modules_installed($modules) {
+  // Run the installation hook. This makes sure that the schema for all
+  // supported core entity types is set correct.
+  entity_plus_install();
+}

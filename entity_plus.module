@@ -1,0 +1,114 @@
+<?php
+
+/**
+ * @file
+ * Main file for Entity Order
+ */
+
+require_once "entity_plus.entity.inc";
+
+/**
+ * Implements hook_permission().
+ */
+function entity_plus_permission() {
+  $return = array();
+
+  $return['entity_plus_administer_order'] = array(
+    'title'       => t('Administer Entity Order'),
+    'description' => t('Allow to the user to config Entity Order.'),
+  );
+
+  return $return;
+}
+
+
+/**
+ * Implements hook_menu().
+ */
+function entity_plus_menu() {
+  $items = array();
+
+  $items['admin/config/content/entity-plus/order'] = array(
+    'title'            => 'Entity Order',
+    'description'      => 'Config entity order.',
+    'access callback'  => 'user_access',
+    'access arguments' => array('entity_plus_administer_order'),
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('entity_plus_order_config_form'),
+    'type'             => MENU_NORMAL_ITEM,
+    'file'             => 'entity_plus.admin.inc'
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_entity_property_info_alter().
+ */
+function entity_plus_entity_property_info_alter(&$info) {
+  foreach (entity_plus_get_core_entity_info() as $entity_type => $entity_info) {
+    if (isset($info[$entity_type])) {
+      $properties = &$info[$entity_type]['properties'];
+
+      $properties['eorder'] = array(
+        'label'        => t("Content Order"),
+        'type'         => 'integer',
+        'description'  => t("The order content ID."),
+        'schema field' => 'nid',
+      );
+    }
+  }
+
+  return $info;
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+function entity_plus_form_node_form_alter(&$form, &$form_state, $form_id) {
+  if (variable_get('entity_plus_node_order')) {
+    $node = $form['#node'];
+    $form['eorder'] = array(
+      '#type'          => 'textfield',
+      '#required'      => FALSE,
+      '#title'         => t('Order'),
+      '#default_value' => isset($node->eorder) ? $node->eorder : NULL,
+      '#size'          => 10,
+      '#element_validate' => array('entity_plus_field_eorder_validate'),
+    );
+  }
+
+}
+
+/**
+ * Validate order property.
+ *
+ * @param $element
+ * @param $form_state
+ */
+function entity_plus_field_eorder_validate($element, &$form_state) {
+  if (!empty($element['#value']) && !is_numeric($element['#value'])) {
+    form_error($element, t('The "!name" option must numeric value.', array('!name' => t($element['#title']))));
+  }
+}
+
+/**
+ * Implements hook_views_data_alter().
+ */
+function entity_plus_views_data_alter(&$data) {
+  foreach (entity_plus_get_core_entity_info() as $entity_type => $info) {
+    if (isset($data[$info['base table']]) && isset($info['field_handler'])) {
+      $data[$info['base table']]['eorder'] = array(
+        'title' => t('Order'),
+        'help'  => t('The content order property.'),
+        'field' => array(
+          'handler'        => $info['field_handler'],
+          'click sortable' => TRUE,
+        ),
+        'sort'  => array(
+          'handler' => 'views_handler_sort'
+        ),
+      );
+    }
+  }
+}
